@@ -22,7 +22,7 @@ BDAYCHECKS = 3 #сколько различных комбинаций из 50-�
 def TokenLogin(): #вход с помощью токена
     print('...token authorization...\n')
     
-    #https://oauth.vk.com/authorize?client_id=1&display=page&scope=friends,groups,news&response_type=token&v=5.92&state=123456
+    #https://oauth.vk.com/authorize?client_id=*тутАйДиПриложения*&display=page&scope=friends,news,groups&response_type=token&v=5.103&state=123456
     # как собрать токен тут: https://devman.org/qna/63/kak-poluchit-token-polzovatelja-dlja-vkontakte/
     #можно добавить логин по лог::пасс
     link = '139923997' #id паблика (это femalememes...)
