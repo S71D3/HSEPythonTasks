@@ -7,17 +7,23 @@ Created on Mon May 11 03:51:39 2020
 
 import requests #парсинг HTML и XML документов
 from bs4 import BeautifulSoup as bs#делаем красивенько)
+import pandas as pd
 
 def GetData():    
-    # print('введите поисковой запрос: ')
-    # search = input()
-    # print('введите страницу для поиска: ')
-    # page = int(input())
-    # return [search, page]
-    return ['пиво', 100]
+    print('введите поисковой запрос: ')
+    search = input()
+    print('введите страницу для поиска: ')
+    page = int(input())
+    return [search, page]
 
-def Parse(search, page):    
-    page = requests.get('https://www.avito.ru/moskva?q='+search+'&p='+str(page)) #переход на нужную страницу нужного запроса
+def Parse(search, page):
+    column_names = ['title', 'link', 'price','metroName','metroDist']
+    df = pd.DataFrame(columns = column_names) #сделали нулевой фрейм
+    
+    siteTitle = 'https://www.avito.ru/'
+    cityLinkTitle = 'moskva'
+    page = requests.get(siteTitle + cityLinkTitle + '?q=' + search + '&p=' + str(page)) #переход на нужную страницу нужного запроса
+    
     soup = bs(page.text, "lxml") #собираем суп страницы для работы
     soup.prettify() #перегоняем в красивый вид
     
@@ -27,49 +33,42 @@ def Parse(search, page):
     for i in trade_list: #работаем с блоками каждого объявления отдельно
         title = i.find('div', class_ = 'snippet-title-row').find('a', class_='snippet-link')['title'] #название объявления
         link = i.find('div', class_='snippet-title-row').find('a', class_='snippet-link')['href'] #ссылка без начала, надо начало в глобалы
+        
         price = i.find('span', class_='snippet-price').text #цена в сыром виде, потом почистим сплитом
+        temp = price.split(' ') #вот собственно и чистим)
+        price = ''
+        for j in temp:
+             try:
+                 temp2 = int(j) #индикатор провокации вызова эксепшена
+                 price+=j #добавлям в поле только числа
+             except ValueError:
+                 pass
+        if (price ==''):
+             price = 'None' #если поле было "не указано", "по договоренности" и тп (можно потом добавить)
         
         try:
-            metro = i.find('span', class_='item-address-georeferences-item__content').text #метро (добавить эксепшн?) #добавили
-            try:
-                metroDist = i.find('span', class_='item-address-georeferences-item__after').text #дистанция до метро в сыром виде
-            except (TypeError, AttributeError): #проверка на наличие расстояния до метро
-                metroDist = 'None'
+            metroName = i.find('span', class_='item-address-georeferences-item__content').text #метро (добавить эксепшн?) #добавили
         except (TypeError, AttributeError): #проверка на наличие метро
-            metro = 'None'
+            metroName = 'None'
+            
+        try:
+            metroDist = i.find('span', class_='item-address-georeferences-item__after').text #дистанция до метро в сыром виде
+            #вроде не надо чистить, но если надо - можно как в случае с ценой
+        except (TypeError, AttributeError): #проверка на наличие расстояния до метро
+            metroDist = 'None'
 
-        print(title + ' ' + price + ' ' + metro + ' ' + metroDist)
-        print('\n')
-    
-    return soup
+        df = df.append({'title': title, 'link':link, 'price':price, 'metroName':metroName, 'metroDist':metroDist}, ignore_index=True) #добавляем информацию в датафрейм
+        
+        #print(title + ' ' + price + ' ' + metroName + ' ' + metroDist) #проверка выводом в консоль    
+    return df #получили датафрейм, заполненный данными
 
 def Output(result):
-    # #print(result)
-    # f = open('text.txt', 'w')
-    # # for sub_heading in result.find_all('h3'):
-    # #     print(sub_heading.text)
-    
-    
-    # temp = result.select('.item-address-georeferences-item__content') #название метро
-    # #temp = result.select('h3') #цена
-    
-    # #print(temp)
-    
-    # for i in temp:
-    #     # f.write(str(i))
-    #     # f.write('\n')
-    #     print(i)
-    #     print('\n')
-    
-    # f.close()
-    
-    return 0
+    print(result)
 
 def main():
     
     data = GetData()
     result = Parse(data[0], data[1])
     Output(result)
-    return 0
 
 main()
