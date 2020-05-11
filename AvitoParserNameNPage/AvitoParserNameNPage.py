@@ -65,8 +65,7 @@ def Parse(search, page):
 def Output(result):
     print(result)
 
-def main():
-    
+def main(): 
     data = GetData()
     result = Parse(data[0], data[1])
     Output(result)
