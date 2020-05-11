@@ -7,8 +7,9 @@ Created on Mon May 11 19:15:52 2020
 
 import pandas as pd #работаем с датафреймами
 import os #для пути загрузки сета
-from datetime import datetime #работа с ячейками с датой
-import matplotlib #работа с визуализацией графиками
+from datetime import date #работа с ячейками с датой
+import matplotlib.pyplot as plt #работа с визуализацией графиками
+from numpy import datetime64 as datetime
 
 CSVNAME = 'walmart.csv' #название исходника с датасетом
 PERCENTDELETION = 0.6 #сколько процентов пропуска допустимо для переменной
@@ -29,12 +30,10 @@ def PreWork(df):
     
 def DateToDate(df):
     print('Изменяем тип переменной даты:')
-    df['Date'] = df['Date'].apply(lambda st: datetime.strptime(st, '%Y-%m-%d').date()) #меняем тип через apply с помощью лямбда-функции
-    
-    #print('Получившийся тип первой ячейки - ' + type(df['Date'][0])) #смотрим тип первого
-    #print('Получившийся тип последней ячейки - ' + type(df['Date'][len(df)-1])) #и тип последнего элемента в столбце даты
-    #оба выводит datetime.date
-    
+    df['Date'] = pd.to_datetime(df['Date']) #меняем тип через apply с помощью лямбда-функции
+    #print('Получившийся тип первой ячейки - ' + str(type(df['Date'][0]))) #смотрим тип первого
+    #print('Получившийся тип последней ячейки - ' + str(type(df['Date'][len(df)-1]))) #и тип последнего элемента в столбце даты
+    print('Получившийся тип столбца - ' + str(df.Date.dtypes))
     print('\n')
     return df #получаем датафрейм со столбцом даты, имеющий тип datatime.date
     
@@ -61,8 +60,53 @@ def Sampling(df):
 
 
 def Dynamics(df):
+    print('Динамика продаж:')
+    df = df[['Date', 'Weekly_Sales']] #убираем ненужные столбцы
+    df = df.groupby('Date', as_index=False).aggregate(sum) #группируем строки по дате, т.к. выручка по отдельности не важна
+    df.plot(x='Date', y='Weekly_Sales')
     
+def Corr(df):
+    plt.matshow(df.corr()) #выводим матрицу корреляции
     
+def Top5(df):
+    dfSel = df[['Store', "Weekly_Sales"]] #убираем ненужные столбцы
+    dfSel = dfSel.groupby('Store', as_index=False).aggregate(sum) #группируем строки магазину
+    dfSel.sort_values(by=['Weekly_Sales'], inplace=True, ignore_index=True) #сортируем по убыванию
+    df = df.loc[df['Store'].isin(dfSel.Store.head(5))] #оставляем в чистовом ДФ только 5 самых прибыльных магазинов
+
+    l = []
+    for i in range(5):
+        l.append(df[df.Store == dfSel.Store[i]])
+        l[i] = l[i][['Date', "Weekly_Sales"]]
+        l[i] = l[i].groupby('Date', as_index=False).aggregate(sum) #группируем строки магазину
+        l[i] = [l[i], dfSel.Store[i]]
+        
+    for frame in l:
+        plt.plot(frame[0]['Date'], frame[0]['Weekly_Sales'], label = frame[1])
+    plt.show()
+
+def Top10(df):
+    df = df[df.Type == 'A']
+    df = df[['Weekly_Sales', 'Date', 'Dept']]
+    df = df[df.Date >= datetime('2011')]
+    df = df[df.Date < datetime('2012')] #отсеяли ненужные отделы
+
+    dfSel = df[['Dept', "Weekly_Sales"]] #убираем ненужные столбцы
+    dfSel = dfSel.groupby('Dept', as_index=False).aggregate(sum) #группируем строки магазину
+    dfSel.sort_values(by=['Weekly_Sales'], inplace=True, ignore_index=True) #сортируем по убыванию
+    df = df.loc[df['Dept'].isin(dfSel.Dept.head(10))] #оставляем в чистовом ДФ только 10 самых прибыльных отделов
+    
+    l = []
+    for i in range(10):
+        l.append(df[df.Dept == dfSel.Dept[i]])
+        l[i] = l[i][['Date', "Weekly_Sales"]]
+        l[i] = l[i].groupby('Date', as_index=False).aggregate(sum) #группируем строки магазину
+        l[i] = [l[i], dfSel.Dept[i]]
+        
+    for frame in l:
+        plt.plot(frame[0]['Date'], frame[0]['Weekly_Sales'], label = frame[1])
+    plt.legend();
+    plt.show()
     
 def main():
     df = DownloadDS() #Загружаем датасет в датафрейм
@@ -70,9 +114,9 @@ def main():
     df = DateToDate(df) #привести Date к формату даты
     df = MissingFields(df) #удаляем переменные, имеющие более 60% пропущенных полей
     #Sampling(df) #работа с выборкой. сколько магазинов и отделов, за какой период времени
-    Dynamics() #динамика продаж, график - по оси Х - дата, по оси Y - продажи всей сети
-    # Corr() #матрица корреляции числовых показателей
-    # Top5() #топ5 самых больших магазинов по сумм. за все время + динамика продаж на одном графике
-    # Top10() #топ10 самых больших ОТДЕЛОВ по сумм. за 2011(!) год среди магазинов типа А (!) + столбчатая диаграмма для них
+    #Dynamics(df) #динамика продаж, график - по оси Х - дата, по оси Y - продажи всей сети
+    #Corr(df) #матрица корреляции числовых показателей
+    #Top5(df) #топ5 самых больших магазинов по сумм. за все время + динамика продаж на одном графике
+    Top10(df) #топ10 самых больших ОТДЕЛОВ по сумм. за 2011(!) год среди магазинов типа А (!) + столбчатая диаграмма для них
 
 main()
