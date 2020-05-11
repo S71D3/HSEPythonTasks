@@ -7,9 +7,8 @@ Created on Mon May 11 19:15:52 2020
 
 import pandas as pd #работаем с датафреймами
 import os #для пути загрузки сета
-from datetime import date #работа с ячейками с датой
 import matplotlib.pyplot as plt #работа с визуализацией графиками
-from numpy import datetime64 as datetime
+from numpy import datetime64 as datetime #работа с ячейками с датой
 
 CSVNAME = 'walmart.csv' #название исходника с датасетом
 PERCENTDELETION = 0.6 #сколько процентов пропуска допустимо для переменной
@@ -42,7 +41,7 @@ def MissingFields(df):
     
     for column in df: #цикл по столбцам вроде можно
         emptyFCount = df[column].isnull().sum()
-        #print('У переменной ' + column + ' ' + str(emptyFCount) + ' пустых полей') #выводим информацию о пропусках
+        print('У переменной ' + column + ' ' + str(emptyFCount) + ' пустых полей') #выводим информацию о пропусках
         if (emptyFCount/len(df) > PERCENTDELETION): #если кол-во пустых строк больше PERCENTDELETION процентов, то удаляем столбец
             del df[column]
     
@@ -60,7 +59,6 @@ def Sampling(df):
 
 
 def Dynamics(df):
-    print('Динамика продаж:')
     df = df[['Date', 'Weekly_Sales']] #убираем ненужные столбцы
     df = df.groupby('Date', as_index=False).aggregate(sum) #группируем строки по дате, т.к. выручка по отдельности не важна
     df.plot(x='Date', y='Weekly_Sales')
@@ -69,46 +67,35 @@ def Corr(df):
     plt.matshow(df.corr()) #выводим матрицу корреляции
     plt.show()
     
-def Top5(df):
-    dfSel = df[['Store', "Weekly_Sales"]] #убираем ненужные столбцы
-    dfSel = dfSel.groupby('Store', as_index=False).aggregate(sum) #группируем строки магазину
+def TopSupp(df, mainfield, topcount):
+    dfSel = df[[mainfield, "Weekly_Sales"]] #убираем ненужные столбцы
+    dfSel = dfSel.groupby(mainfield, as_index=False).aggregate(sum) #группируем строки элементов типа mainfield
     dfSel.sort_values(by=['Weekly_Sales'], inplace=True, ignore_index=True) #сортируем по убыванию
-    df = df.loc[df['Store'].isin(dfSel.Store.head(5))] #оставляем в чистовом ДФ только 5 самых прибыльных магазинов
+    df = df.loc[df[mainfield].isin(dfSel[mainfield].head(topcount))] #оставляем в чистовом ДФ только topcount самых прибыльных элементов типа mainfield
 
-    l = []
-    for i in range(5):
-        l.append(df[df.Store == dfSel.Store[i]])
-        l[i] = l[i][['Date', "Weekly_Sales"]]
-        l[i] = l[i].groupby('Date', as_index=False).aggregate(sum) #группируем строки магазину
-        l[i] = [l[i], dfSel.Store[i]]
+    l = [] #список для хранения отдельных экземпляров датафреймов для каждого элемента типа mainfield
+    for i in range(topcount):
+        l.append(df[df[mainfield] == dfSel[mainfield][i]]) #отбираем только подходящие элементы базового датафрейма
+        l[i] = l[i][['Date', "Weekly_Sales"]] #убираем все ненужные строки в каждом отдельном датафрейме
+        l[i] = l[i].groupby('Date', as_index=False).aggregate(sum) #группируем строки элементам типа mainfield
+        l[i] = [l[i], dfSel[mainfield][i]] #добавляем каждому датафрейму название для вывода легенды
         
     for frame in l:
-        plt.plot(frame[0]['Date'], frame[0]['Weekly_Sales'], label = frame[1])
-    plt.legend();
-    plt.show()
+        plt.plot(frame[0]['Date'], frame[0]['Weekly_Sales'], label = frame[1]) #добавляем график каждого дочернего датафрейма в визуализацию
+    plt.legend() #виз легенды
+    plt.show() #виз картинки
+    
+def Top5(df):
+    TopSupp(df, 'Store', 5)
 
 def Top10(df):
     df = df[df.Type == 'A']
     df = df[['Weekly_Sales', 'Date', 'Dept']]
     df = df[df.Date >= datetime('2011')]
     df = df[df.Date < datetime('2012')] #отсеяли ненужные отделы
-
-    dfSel = df[['Dept', "Weekly_Sales"]] #убираем ненужные столбцы
-    dfSel = dfSel.groupby('Dept', as_index=False).aggregate(sum) #группируем строки магазину
-    dfSel.sort_values(by=['Weekly_Sales'], inplace=True, ignore_index=True) #сортируем по убыванию
-    df = df.loc[df['Dept'].isin(dfSel.Dept.head(10))] #оставляем в чистовом ДФ только 10 самых прибыльных отделов
     
-    l = []
-    for i in range(10):
-        l.append(df[df.Dept == dfSel.Dept[i]])
-        l[i] = l[i][['Date', "Weekly_Sales"]]
-        l[i] = l[i].groupby('Date', as_index=False).aggregate(sum) #группируем строки магазину
-        l[i] = [l[i], dfSel.Dept[i]]
-        
-    for frame in l:
-        plt.plot(frame[0]['Date'], frame[0]['Weekly_Sales'], label = frame[1])
-    plt.legend();
-    plt.show()
+    TopSupp(df, 'Dept', 10)
+
     
 def main():
     df = DownloadDS() #Загружаем датасет в датафрейм
