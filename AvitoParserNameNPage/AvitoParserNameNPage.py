@@ -16,21 +16,11 @@ def GetData():
     page = int(input())
     return [search, page]
 
-def Parse(search, page):
+def SoupToDB(list):
     column_names = ['title', 'link', 'price','metroName','metroDist']
     df = pd.DataFrame(columns = column_names) #сделали нулевой фрейм
     
-    siteTitle = 'https://www.avito.ru/'
-    cityLinkTitle = 'moskva'
-    page = requests.get(siteTitle + cityLinkTitle + '?q=' + search + '&p=' + str(page)) #переход на нужную страницу нужного запроса
-    
-    soup = bs(page.text, "lxml") #собираем суп страницы для работы
-    soup.prettify() #перегоняем в красивый вид
-    
-    trade_list = soup.find_all('div', {'class': 'item_table-wrapper'}) #получаем список из объявлений
-    #print(len(trade_list)) #кол-во объявлений на странице
-    
-    for i in trade_list: #работаем с блоками каждого объявления отдельно
+    for i in list: #работаем с блоками каждого объявления отдельно
         title = i.find('div', class_ = 'snippet-title-row').find('a', class_='snippet-link')['title'] #название объявления
         link = i.find('div', class_='snippet-title-row').find('a', class_='snippet-link')['href'] #ссылка без начала, надо начало в глобалы
         
@@ -59,7 +49,23 @@ def Parse(search, page):
 
         df = df.append({'title': title, 'link':link, 'price':price, 'metroName':metroName, 'metroDist':metroDist}, ignore_index=True) #добавляем информацию в датафрейм
         
-        #print(title + ' ' + price + ' ' + metroName + ' ' + metroDist) #проверка выводом в консоль    
+        #print(title + ' ' + price + ' ' + metroName + ' ' + metroDist) #проверка выводом в консоль  
+    
+    return df
+
+def Parse(search, page):
+    siteTitle = 'https://www.avito.ru/'
+    cityLinkTitle = 'moskva'
+    page = requests.get(siteTitle + cityLinkTitle + '?q=' + search + '&p=' + str(page)) #переход на нужную страницу нужного запроса
+    
+    soup = bs(page.text, "lxml") #собираем суп страницы для работы
+    soup.prettify() #перегоняем в красивый вид
+    
+    annList = soup.find_all('div', {'class': 'item_table-wrapper'}) #получаем список из объявлений
+    #print(len(trade_list)) #кол-во объявлений на странице
+    
+    df = SoupToDB(annList) #формируем датафрейм из супа с фильтрацией
+      
     return df #получили датафрейм, заполненный данными
 
 def Output(result):
